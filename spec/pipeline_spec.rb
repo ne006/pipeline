@@ -1,7 +1,6 @@
 require 'rspec'
-require_relative './pipe_section.rb'
 
-RSpec.describe PipeSection do
+RSpec.describe Pipeline::Pipeline do
 	describe "#start" do
 		before(:each) do
 			@source = Queue.new
@@ -9,18 +8,22 @@ RSpec.describe PipeSection do
 
 			(1..5).each { |i| @source.push i }
 
-			@section = PipeSection.new(
+			@pipeline = Pipeline::Pipeline.new(
 				source: @source,
 				target: @target,
-				max_workers: 3
-			) do |i, source, target|
-				i*2
-			end
+				sequence: [
+					{	block: (proc { |e| e*2 })	},
+					{
+						block: (proc { |e| e.pow(2) }),
+						max_workers: 3
+					}
+				]
+			)
 		end
 
 		it "should get items from the source queue" do
 			@source.close
-			@section.await
+			@pipeline.await
 
 			expect(@source.size).to eql(0)
 		end
@@ -28,18 +31,18 @@ RSpec.describe PipeSection do
 		it "should put resulting items in the target queue" do
 			source_size = @source.size
 			@source.close
-			@section.await
+			@pipeline.await
 
 			expect(@target.size).to eql(source_size)
 		end
 
 		it "should process items" do
 			@source.close
-			@section.await
+			@pipeline.await
 
 			result = (1..5).to_a.map { @target.shift }
 
-			expect(result).to match_array (1..5).map { |i| i*2 }
+			expect(result).to match_array (1..5).map { |i| i*2 }.map { |i| i.pow(2) }
 		end
 	end
 end
