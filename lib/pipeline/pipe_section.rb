@@ -23,7 +23,8 @@ module Pipeline
   				until source.empty? && source.closed?
   					payload = source.shift
   					if payload
-  						target.push(block.call(payload, source, target))
+              result = block.call(payload, source, target)
+  						target.push result if target
   					end
   				end
   			end
@@ -36,7 +37,7 @@ module Pipeline
   	def await
   		start
   		@workers.each { |w| w.join }
-  		@target.close
+  		@target.close if @target
   		self
   	end
   end
